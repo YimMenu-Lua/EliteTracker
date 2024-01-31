@@ -1,11 +1,14 @@
 elite_tracker_tab = gui.get_tab("Elite Tracker")
 
+ch_tab = elite_tracker_tab:add_tab("The Diamond Casino Heist")
 h4_tab = elite_tracker_tab:add_tab("The Cayo Perico Heist")
 
 local og_elites = {}
 local h2_elites = {}
 local ch_elites = {}
 local h4_elite
+
+local ch_elite_time = ""
 
 local h4_elite_time = ""
 local h4_has_quick_restarted = 0
@@ -38,6 +41,59 @@ function get_net_difference(timeb)
     return NETWORK.GET_TIME_DIFFERENCE(MISC.GET_GAME_TIMER(), timeb)
 end
 
+function get_mission_time() -- OG Heists, Doomsday Heist, Casino Heist
+	local mission_time = 0
+	
+	mission_time = get_net_difference(locals.get_int("fm_mission_controller", 19728 + 985))
+	if mission_time <= 0 then
+		mission_time = get_net_difference(locals.get_int("fm_mission_controller", 19728 + 985))
+	end
+	mission_time = mission_time + 10000
+	if globals.get_int(2684312 + 43 + 55) or globals.get_int(2684312 + 43 + 56) then
+		if globals.get_int(4718592 + 1) == 0 then
+			mission_time = mission_time + globals.get_int(2685249 + 6465)
+		else
+			mission_time = mission_time + globals.get_int(2685249 + 6465)
+		end
+	end
+	
+	return mission_time
+end
+
+function ch_is_active()
+	local root_content_ids = {
+		tunables.get_int("CICASINO_HEIST_MISSION_DIRECT_STAGE_1A"),
+		tunables.get_int("CICASINO_HEIST_MISSION_DIRECT_STAGE_2A_CASINOFLOOR1"),
+		tunables.get_int("CICASINO_HEIST_MISSION_DIRECT_STAGE_2A_CASINOFLOOR2"),
+		tunables.get_int("CICASINO_HEIST_MISSION_DIRECT_STAGE_2B_ROOFTOP"),
+		tunables.get_int("CICASINO_HEIST_MISSION_DIRECT_STAGE_2C_TUNNEL"),
+		tunables.get_int("CICASINO_HEIST_MISSION_DIRECT_STAGE_3A"),
+		tunables.get_int("CICASINO_HEIST_MISSION_DIRECT_STAGE_4A"),
+		tunables.get_int("CICASINO_HEIST_MISSION_DIRECT_STAGE_5A"),
+		tunables.get_int("CICASINO_HEIST_MISSION_STEALTH_STAGE_1A"),
+		tunables.get_int("CICASINO_HEIST_MISSION_STEALTH_STAGE_2B_RAPPEL"),
+		tunables.get_int("CICASINO_HEIST_MISSION_STEALTH_STAGE_2C_SIDE"),
+		tunables.get_int("CICASINO_HEIST_MISSION_STEALTH_STAGE_3A"),
+		tunables.get_int("CICASINO_HEIST_MISSION_STEALTH_STAGE_4A"),
+		tunables.get_int("CICASINO_HEIST_MISSION_STEALTH_STAGE_5A"),
+		tunables.get_int("CICASINO_HEIST_MISSION_SUBTERFUGE_STAGE_1A"),
+		tunables.get_int("CICASINO_HEIST_MISSION_SUBTERFUGE_STAGE_2A"),
+		tunables.get_int("CICASINO_HEIST_MISSION_SUBTERFUGE_STAGE_2B"),
+		tunables.get_int("CICASINO_HEIST_MISSION_SUBTERFUGE_STAGE_3A"),
+		tunables.get_int("CICASINO_HEIST_MISSION_SUBTERFUGE_STAGE_3B"),
+		tunables.get_int("CICASINO_HEIST_MISSION_SUBTERFUGE_STAGE_4A"),
+		tunables.get_int("CICASINO_HEIST_MISSION_SUBTERFUGE_STAGE_5A")
+	}
+	
+	for i = 1, #root_content_ids do
+		if globals.get_int(4718592 + 126144) == root_content_ids[i] then
+			return true
+		end
+	end
+	
+	return false
+end
+
 function h4_get_mission_time()
     local mission_time = 0
 
@@ -58,7 +114,7 @@ function h4_get_mission_time()
     return mission_time
 end
 
-function is_h4_active()
+function h4_is_active()
 	for i = 0, 10 do
 		if globals.get_int(4718592 + 126144) == tunables.get_int("H4_ROOT_CONTENT_ID_" .. i) then
 			return true
@@ -80,6 +136,7 @@ script.register_looped("Elite Tracker", function(script)
 	ch_elites[1] = stats.get_packed_stat_bool(28194)
 	ch_elites[2] = stats.get_packed_stat_bool(28195)
 	ch_elites[3] = stats.get_packed_stat_bool(28196)
+	ch_elite_time = format_milliseconds(get_mission_time())
 	h4_elite = stats.get_bool("MPX_AWD_ELITE_THIEF")
 	h4_elite_time = format_milliseconds(h4_get_mission_time())
 	h4_has_quick_restarted = globals.get_int(2685249 + 6463)
@@ -107,8 +164,24 @@ elite_tracker_tab:add_imgui(function()
 	ImGui.Text("Cayo Perico: " .. (h4_elite and "completed" or "not completed"))
 end)
 
+ch_tab:add_imgui(function()
+	if ch_is_active() then
+		if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_mission_controller")) ~= 0 then
+			if locals.get_int("fm_mission_controller", 19728 + 985) ~= 0 then
+				ImGui.Text("Timer: " .. ch_elite_time .. " / 00:15:00")
+			else
+				ImGui.Text("Timer: paused")
+			end
+		else
+			ImGui.Text("Timer: not started")
+		end
+	else
+		ImGui.Text("Heist is not active.")
+	end
+end)
+
 h4_tab:add_imgui(function()
-	if is_h4_active() then
+	if h4_is_active() then
 		if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_mission_controller_2020")) ~= 0 then
 			if locals.get_int("fm_mission_controller_2020", 48513 + 1487) ~= 0 then
 				ImGui.Text("Timer: " .. h4_elite_time .. " / 00:15:00")
