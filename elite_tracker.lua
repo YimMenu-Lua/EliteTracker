@@ -1,5 +1,6 @@
 elite_tracker_tab = gui.get_tab("Elite Tracker")
 
+h2_tab = elite_tracker_tab:add_tab("The Doomsday Heist")
 ch_tab = elite_tracker_tab:add_tab("The Diamond Casino Heist")
 h4_tab = elite_tracker_tab:add_tab("The Cayo Perico Heist")
 
@@ -8,14 +9,25 @@ local h2_elites = {}
 local ch_elites = {}
 local h4_elite
 
-local ch_elite_time = ""
+local has_quick_restarted
+local has_got_detected
 
-local h4_elite_time = ""
-local h4_has_quick_restarted = 0
-local h4_has_failed_hack = 0
-local h4_deaths = 0
-local h4_bag_size = 0
-local h4_grabbed_cash = 0
+local elite_time
+local has_failed_hack
+local kills
+local headshots
+local deaths
+local vehicle_damage
+
+local h4_elite_time
+local h4_has_failed_hack
+local h4_deaths
+local h4_bag_size
+local h4_grabbed_cash
+
+function has_bit_set(address, pos)
+	return (address & (1 << pos)) ~= 0
+end
 
 function format_int(number)
   local i, j, minus, int, fraction = tostring(number):find('([-]?)(%d+)([.]?%d*)')
@@ -41,7 +53,7 @@ function get_net_difference(timeb)
     return NETWORK.GET_TIME_DIFFERENCE(MISC.GET_GAME_TIMER(), timeb)
 end
 
-function get_mission_time() -- OG Heists, Doomsday Heist, Casino Heist
+function get_mission_time()
 	local mission_time = 0
 	
 	mission_time = get_net_difference(locals.get_int("fm_mission_controller", 19728 + 985))
@@ -50,11 +62,7 @@ function get_mission_time() -- OG Heists, Doomsday Heist, Casino Heist
 	end
 	mission_time = mission_time + 10000
 	if globals.get_int(2684312 + 43 + 55) or globals.get_int(2684312 + 43 + 56) then
-		if globals.get_int(4718592 + 1) == 0 then
-			mission_time = mission_time + globals.get_int(2685249 + 6465)
-		else
-			mission_time = mission_time + globals.get_int(2685249 + 6465)
-		end
+		mission_time = mission_time + globals.get_int(2685249 + 6465)
 	end
 	
 	return mission_time
@@ -109,7 +117,7 @@ function h4_get_mission_time()
         end
     end
 
-    mission_time = mission_time + 10000 -- R* adds up 10 seconds to the timer for no reason
+    mission_time = mission_time + 10000
 
     return mission_time
 end
@@ -136,10 +144,20 @@ script.register_looped("Elite Tracker", function(script)
 	ch_elites[1] = stats.get_packed_stat_bool(28194)
 	ch_elites[2] = stats.get_packed_stat_bool(28195)
 	ch_elites[3] = stats.get_packed_stat_bool(28196)
-	ch_elite_time = format_milliseconds(get_mission_time())
+	has_quick_restarted = globals.get_int(2685249 + 6463)
+	if has_bit_set(locals.get_int("fm_mission_controller", 22942 + 1552 + 11), 1) then
+		has_got_detected = true
+	else
+		has_got_detected = false
+	end
+	elite_time = format_milliseconds(get_mission_time())
+	kills = locals.get_int("fm_mission_controller", 19728 + 1725 + 1)
+	headshots = locals.get_int("fm_mission_controller", 19728 + 1740 + 1)
+	deaths = locals.get_int("fm_mission_controller", 19728 + 1730 + 1)
+	has_failed_hack = locals.get_int("fm_mission_controller", 28347 + 3197)
+	vehicle_damage = locals.get_int("fm_mission_controller", 24562 + 1231)
 	h4_elite = stats.get_bool("MPX_AWD_ELITE_THIEF")
 	h4_elite_time = format_milliseconds(h4_get_mission_time())
-	h4_has_quick_restarted = globals.get_int(2685249 + 6463)
 	h4_has_failed_hack = locals.get_int("fm_mission_controller_2020", 51882 + 1517 + 51)
 	h4_deaths = locals.get_int("fm_mission_controller_2020", 51882 + 1517 + 36 + 1)
 	h4_bag_size = math.floor(locals.get_float("fm_mission_controller_2020", 60496 + (1 + (0 * 261)) + 236 + 2) / SYSTEM.TO_FLOAT(tunables.get_int(1859395035)) * 100.0)
@@ -154,8 +172,8 @@ elite_tracker_tab:add_imgui(function()
 	ImGui.Text("Pacific Standard Job: " .. (og_elites[5] and "completed" or "not completed"))
 	ImGui.Separator()
 	ImGui.Text("Data Breaches: " .. (h2_elites[1] and "completed" or "not completed"))
-	ImGui.Text("Bogdan Problem: " .. (h2_elites[1] and "completed" or "not completed"))
-	ImGui.Text("Doomsday Scenario: " .. (h2_elites[1] and "completed" or "not completed"))
+	ImGui.Text("Bogdan Problem: " .. (h2_elites[2] and "completed" or "not completed"))
+	ImGui.Text("Doomsday Scenario: " .. (h2_elites[3] and "completed" or "not completed"))
 	ImGui.Separator()
 	ImGui.Text("Silent & Sneaky: " .. (ch_elites[1] and "completed" or "not completed"))
 	ImGui.Text("Big Con: " .. (ch_elites[2] and "completed" or "not completed"))
@@ -164,17 +182,44 @@ elite_tracker_tab:add_imgui(function()
 	ImGui.Text("Cayo Perico: " .. (h4_elite and "completed" or "not completed"))
 end)
 
+-- TO-DO: Add if doomsday heist active check and handle different time requirements
+h2_tab:add_imgui(function()
+	if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_mission_controller")) ~= 0 then
+		if locals.get_int("fm_mission_controller", 19728 + 985) ~= 0 then
+			ImGui.Text("Timer: " .. elite_time .. " / 00:15:00")
+		else
+			ImGui.Text("Timer: paused")
+		end
+	else
+		ImGui.Text("Timer: not started")
+	end
+	
+	ImGui.Text("Quick Restarted: " .. (has_quick_restarted ~= 0 and "Yes" or "No"))
+	ImGui.Text("Detected: " .. (has_got_detected and "Yes" or "No"))
+	ImGui.Text("Failed Hack: " .. (has_failed_hack ~= 0 and "Yes" or "No"))
+	ImGui.Text("Deaths: " .. deaths)
+	ImGui.Text("Kills: " .. kills)
+	ImGui.Text("Headshots: " .. headshots)
+	ImGui.Text("Vehicle Damage: " .. vehicle_damage .. "%")
+end)
+
 ch_tab:add_imgui(function()
 	if ch_is_active() then
 		if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_mission_controller")) ~= 0 then
 			if locals.get_int("fm_mission_controller", 19728 + 985) ~= 0 then
-				ImGui.Text("Timer: " .. ch_elite_time .. " / 00:15:00")
+				ImGui.Text("Timer: " .. elite_time .. " / 00:15:00")
 			else
 				ImGui.Text("Timer: paused")
 			end
 		else
 			ImGui.Text("Timer: not started")
 		end
+		
+		ImGui.Text("Quick Restarted: " .. (has_quick_restarted ~= 0 and "Yes" or "No"))
+		ImGui.Text("Detected: " .. (has_got_detected and "Yes" or "No"))
+		ImGui.Text("Failed Hack: " .. (has_failed_hack ~= 0 and "Yes" or "No"))
+		ImGui.Text("Deaths: " .. deaths)
+		ImGui.Text("Headshots: " .. headshots)
 	else
 		ImGui.Text("Heist is not active.")
 	end
@@ -192,7 +237,7 @@ h4_tab:add_imgui(function()
 			ImGui.Text("Timer: not started")
 		end
 		
-		ImGui.Text("Quick Restarted: " .. (h4_has_quick_restarted ~= 0 and "Yes" or "No"))
+		ImGui.Text("Quick Restarted: " .. (has_quick_restarted ~= 0 and "Yes" or "No"))
 		ImGui.Text("Failed Hack: " .. (h4_has_failed_hack ~= 0 and "Yes" or "No"))		
 		ImGui.Text("Deaths: " .. h4_deaths)	
 		ImGui.Text("Bag: $" .. format_int(h4_grabbed_cash) .. " (" .. h4_bag_size .. "%)")
