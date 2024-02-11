@@ -46,6 +46,15 @@ function format_milliseconds(ms)
     return formatted
 end
 
+--https://github.com/itsjustcurtis/MenyooSP/blob/685cac407313ed92f1c6e23c4bb09dbcf78c0364/Solution/source/Natives/natives2.cpp#L62
+function add_text_component_long_string(text)
+    local max_str_component_length = 99
+    for i = 1, #text, max_str_component_length do
+        local str_comp = string.sub(text, i, i + max_str_component_length - 1)
+        HUD.ADD_TEXT_COMPONENT_SUBSTRING_PLAYER_NAME(str_comp)
+    end
+end
+
 function get_net_difference(timeb)
     if NETWORK.NETWORK_IS_GAME_IN_PROGRESS() then
         return NETWORK.GET_TIME_DIFFERENCE(NETWORK.GET_NETWORK_TIME(), timeb)
@@ -55,8 +64,13 @@ function get_net_difference(timeb)
 end
 
 function draw_text(text)
-    HUD.BEGIN_TEXT_COMMAND_DISPLAY_TEXT("STRING")
-    HUD.ADD_TEXT_COMPONENT_SUBSTRING_PLAYER_NAME(text)
+    if string.len(text) < 99 then
+		HUD.BEGIN_TEXT_COMMAND_DISPLAY_TEXT("STRING")
+		HUD.ADD_TEXT_COMPONENT_SUBSTRING_PLAYER_NAME(text)
+	else
+		HUD.BEGIN_TEXT_COMMAND_DISPLAY_TEXT("jamyfafi")
+		add_text_component_long_string(text)
+	end
     HUD.SET_TEXT_RENDER_ID(1)
     HUD.SET_TEXT_OUTLINE()
     HUD.SET_TEXT_WRAP(.0, 0.975)
