@@ -1,32 +1,31 @@
 local elite_tracker_tab    = gui.get_tab("Elite Tracker")
 local elite_objectives_tab = elite_tracker_tab:add_tab("Elite Objectives")
 
-local HEIST_TYPES = {
-	OG_HEISTS      = 0,
-	DOOMSDAY_HEIST = 1,
-	CASINO_HEIST   = 2,
-	PERICO_HEIST   = 3
-}
+local OG_HEISTS      = 0
+local DOOMSDAY_HEIST = 1
+local CASINO_HEIST   = 2
+local PERICO_HEIST   = 3
 
 local global_one              = 4718592
-local global_one_offset       = 127178
-local global_two              = 2684504
-local global_three            = 2685444
-local global_three_offset_one = 6489
-local global_three_offset_two = 6487
+local global_one_offset       = 128476
+local global_two              = 2684718
+local global_three            = 2685658
+local global_three_offset_one = 6501
+local global_three_offset_two = 6499
 
-local mission_controller_local_one                        = 19746
-local mission_controller_local_two                        = 28365
-local mission_controller_local_three                      = 28365
-local mission_controller_2020_local_one                   = 53558
-local mission_controller_2020_local_two                   = 50150
-local mission_controller_2020_local_two_offset_one        = 1495
-local mission_controller_2020_local_two_offset_two        = 1492
-local mission_controller_2020_local_three                 = 62290
-local mission_controller_2020_local_three_offset_one_size = 275
+local mission_controller_local_one                        = 19781
+local mission_controller_local_two                        = 28400
+local mission_controller_local_three                      = 24615
+local mission_controller_2020_local_one                   = 55623
+local mission_controller_2020_local_one_offset_one        = 1518 -- Struct has changed in 1.70
+local mission_controller_2020_local_two                   = 52171
+local mission_controller_2020_local_two_offset_one        = 1496
+local mission_controller_2020_local_two_offset_two        = 1493
+local mission_controller_2020_local_three                 = 64610
+local mission_controller_2020_local_three_offset_one_size = 281
 local mission_controller_2020_local_three_offset_two      = 237
 
-local selected_heist  = HEIST_TYPES.OG_HEISTS
+local selected_heist  = OG_HEISTS
 local view_objectives = false
 
 local has_quick_restarted = 0
@@ -179,7 +178,7 @@ end
 local function h4_get_mission_time()
     local mission_time = 0
     if globals.get_int(global_two + 43 + 55) or globals.get_int(global_two + 43 + 56) then
-        mission_time = locals.get_int("fm_mission_controller_2020", mission_controller_2020_local_one + 1517 + 29)
+        mission_time = locals.get_int("fm_mission_controller_2020", mission_controller_2020_local_one + mission_controller_2020_local_one_offset_one + 29)
         if locals.get_int("fm_mission_controller_2020", mission_controller_2020_local_two + mission_controller_2020_local_two_offset_one) <= 0 then
             mission_time = mission_time + get_net_difference(locals.get_int("fm_mission_controller_2020", mission_controller_2020_local_two + mission_controller_2020_local_two_offset_two))
         end
@@ -194,7 +193,7 @@ local function h4_get_mission_time()
 end
 
 local function is_elite_timer_paused()
-    if selected_heist == HEIST_TYPES.PERICO_HEIST then
+    if selected_heist == PERICO_HEIST then
         return locals.get_int("fm_mission_controller_2020", mission_controller_2020_local_two + mission_controller_2020_local_two_offset_two) == 0
     else
         return locals.get_int("fm_mission_controller", mission_controller_local_one + 985) == 0
@@ -203,7 +202,7 @@ end
 
 local function render_elite_objectives()
     local text = ""
-    if selected_heist == HEIST_TYPES.OG_HEISTS then
+    if selected_heist == OG_HEISTS then
         if og_is_active() then
             text = string.format(
                 "TIME: %s~n~QUICK RESTARTED: %s~n~FAILED HACK: %s~n~DEATHS: %d~n~KILLS: %d~n~VEHICLE DAMAGE: %d%%~n~RASHKOVSKY DAMAGE: %d%%~n~NOOSE CALLED: %s",
@@ -219,7 +218,7 @@ local function render_elite_objectives()
         else
             text = "HEIST IS NOT ACTIVE."
         end
-    elseif selected_heist == HEIST_TYPES.DOOMSDAY_HEIST then
+    elseif selected_heist == DOOMSDAY_HEIST then
         if h2_is_active() then
             text = string.format(
                 "TIME: %s~n~QUICK RESTARTED: %s~n~FAILED HACK: %s~n~DEATHS: %d~n~KILLS: %d~n~HEADSHOTS: %d~n~VEHICLE DAMAGE: %d%%",
@@ -234,7 +233,7 @@ local function render_elite_objectives()
         else
             text = "HEIST IS NOT ACTIVE."
         end
-    elseif selected_heist == HEIST_TYPES.CASINO_HEIST then
+    elseif selected_heist == CASINO_HEIST then
         if ch_is_active() then
             text = string.format(
                 "TIME: %s~n~QUICK RESTARTED: %s~n~FAILED HACK: %s~n~DEATHS: %d~n~HEADSHOTS: %d",
@@ -247,7 +246,7 @@ local function render_elite_objectives()
         else
             text = "HEIST IS NOT ACTIVE."
         end
-    elseif selected_heist == HEIST_TYPES.PERICO_HEIST then
+    elseif selected_heist == PERICO_HEIST then
         if h4_is_active() then
             text = string.format(
                 "TIME: %s~n~QUICK RESTARTED: %s~n~FAILED HACK: %s~n~DEATHS: %d~n~BAG: $%s (%d%%)",
@@ -289,10 +288,10 @@ script.register_looped("Elite Tracker", function()
     noose_called        = has_bit_set(locals.get_int("fm_mission_controller", mission_controller_local_one + 3), 11) and 1 or 0
     elite_time          = format_milliseconds(get_mission_time())
 	
-    h4_has_failed_hack  = locals.get_int("fm_mission_controller_2020", mission_controller_2020_local_one + 1517 + 51)
-    h4_deaths           = locals.get_int("fm_mission_controller_2020", mission_controller_2020_local_one + 1517 + 36 + 1)
+    h4_has_failed_hack  = locals.get_int("fm_mission_controller_2020", mission_controller_2020_local_one + mission_controller_2020_local_one_offset_one + 51)
+    h4_deaths           = locals.get_int("fm_mission_controller_2020", mission_controller_2020_local_one + mission_controller_2020_local_one_offset_one + 36 + 1)
     h4_bag_size         = math.floor(locals.get_float("fm_mission_controller_2020", mission_controller_2020_local_three + (1 + (0 * mission_controller_2020_local_three_offset_one_size)) + mission_controller_2020_local_three_offset_two + 2) / SYSTEM.TO_FLOAT(tunables.get_int("HEIST_BAG_MAX_CAPACITY")) * 100.0)
-    h4_grabbed_cash     = format_int(locals.get_int("fm_mission_controller_2020", mission_controller_2020_local_one + 1517 + 53))
+    h4_grabbed_cash     = format_int(locals.get_int("fm_mission_controller_2020", mission_controller_2020_local_one + mission_controller_2020_local_one_offset_one + 53))
     h4_elite_time       = format_milliseconds(h4_get_mission_time())
 
     if view_objectives and not HUD.IS_HUD_COMPONENT_ACTIVE(19) then
